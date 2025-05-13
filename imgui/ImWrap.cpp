@@ -53,7 +53,7 @@ void ImGui::GentaLegacyColoring(ImGuiStyle* styles) {
     colors[ImGuiCol_TextDisabled] = ImVec4(0.36f, 0.42f, 0.47f, 1.00f);
     colors[ImGuiCol_WindowBg] = ImVec4(0.0f, 0.0f, 0.0f, 1.00f);
     colors[ImGuiCol_ChildBg] = ImVec4(0.0f, 0.0f, 0.0f, 0.235f);
-    colors[ImGuiCol_PopupBg] = ImVec4(0.0f, 0.0f, 0.0f, 0.635f);
+    colors[ImGuiCol_PopupBg] = ImVec4(0.0f, 0.0f, 0.0f, 1.0f);
     colors[ImGuiCol_Border] = ImVec4(1.0f, 0.0f, 0.0f, 1.00f);
     colors[ImGuiCol_BorderShadow] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
     colors[ImGuiCol_FrameBg] = ImVec4(0.20f, 0.25f, 0.29f, 0.392f);

@@ -13,7 +13,7 @@
 #include "Drawing.h"
 #include "PakarSystem.h"
 #include <unordered_set>
-
+#include <ImNotify.h>
 
 
 
@@ -45,13 +45,14 @@ int WINAPI WinMain(
             g_drawing->RenderHook();
             {
                 static std::vector<bool> selectedGejala(g_pakarSystem->GetNamaGejala().size(), false);
-                static std::vector<uint8_t> hasilKemungkinanDiagnosa; 
+                static std::vector<uint8_t> hasilKemungkinanDiagnosa;
                 static std::vector<uint8_t> hasilDiagnosaPalingAkurat;
+                static std::vector<std::pair<uint8_t, size_t>> persentaseDiagnosa;
                 static ImGuiTextFilter m_FilterPakar, m_FilterBuku;
                 static bool isShowBukuPenyakit{ false };
+                ImGuiIO& io = ImGui::GetIO();
 
-                
-
+               
                 ImGui::Begin("Pakar System", nullptr, ImGuiWindowFlags_::ImGuiWindowFlags_NoCollapse);
                 {
                     ImGui::BeginChild("##OUTER_CHILD_01", ImVec2(ImGui::GetContentRegionAvail().x / 2.0f, ImGui::GetFrameHeightWithSpacing() * -1), true, ImGuiWindowFlags_::ImGuiWindowFlags_NoScrollbar);
@@ -60,7 +61,7 @@ int WINAPI WinMain(
                         ImGui::Separator();
                         ImGui::BeginChild("##INNER_CHILD_01", ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetFrameHeightWithSpacing() * -1), false);
                         {
-                            
+
                             if (ImGui::BeginTable("GejalaTable", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable))
                             {
                                 ImGui::TableSetupColumn("No", ImGuiTableColumnFlags_WidthFixed, 40.0f);
@@ -92,12 +93,12 @@ int WINAPI WinMain(
 
                                 ImGui::EndTable();
                             }
-                            
+
                         }
                         ImGui::EndChild();
                         ImGui::Separator();
                         m_FilterPakar.DrawWithHint("##FilterGejala", "Filter Gejala", ImGui::GetContentRegionAvail().x);
-                        
+
                     }
                     ImGui::EndChild();
                     ImGui::SameLine();
@@ -106,11 +107,27 @@ int WINAPI WinMain(
                         ImGui::Text(ICON_FA_AMBULANCE " Kemungkinan Penyakit:");
                         ImGui::BeginChild("##INNER_CHILD_03", ImVec2(0, ImGui::GetContentRegionAvail().y * 0.5f), true);
                         {
-                            
-                            if (!hasilKemungkinanDiagnosa.empty())
+                            if (!persentaseDiagnosa.empty())
                             {
-                                for (uint8_t id : hasilKemungkinanDiagnosa)
-                                    ImGui::BulletText("%s", g_pakarSystem->GetNamaPenyakit()[id].c_str());
+                                if (ImGui::BeginTable("##TableDiagnosa", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+                                {
+                                    ImGui::TableSetupColumn("Nama Penyakit");
+                                    ImGui::TableSetupColumn("Persentase");
+                                    ImGui::TableHeadersRow();
+
+                                    for (const auto& [id, persen] : persentaseDiagnosa)
+                                    {
+                                        ImGui::TableNextRow();
+
+                                        ImGui::TableSetColumnIndex(0);
+                                        ImGui::TextWrapped("%s", g_pakarSystem->GetNamaPenyakit()[id].c_str());
+
+                                        ImGui::TableSetColumnIndex(1);
+                                        ImGui::Text("%zu%%", persen);
+                                    }
+
+                                    ImGui::EndTable();
+                                }
                             }
                             else
                             {
@@ -122,7 +139,7 @@ int WINAPI WinMain(
                         ImGui::TextColored(ImGui::rbw, ICON_FA_BULLSEYE " Diagnosa Paling Akurat:");
                         ImGui::BeginChild("##INNER_CHILD_04", ImVec2(0, 0), true);
                         {
-                            
+
                             if (!hasilDiagnosaPalingAkurat.empty())
                             {
                                 for (uint8_t id : hasilDiagnosaPalingAkurat)
@@ -143,83 +160,93 @@ int WINAPI WinMain(
                         inputGejala.reserve(selectedGejala.size());
                         for (size_t i = 0; i < selectedGejala.size(); ++i)
                             if (selectedGejala[i]) inputGejala.push_back(static_cast<uint8_t>(i));
-                        g_pakarSystem->Diagnosa(inputGejala, hasilKemungkinanDiagnosa, hasilDiagnosaPalingAkurat);
+                        g_pakarSystem->Diagnosa(inputGejala, hasilKemungkinanDiagnosa, hasilDiagnosaPalingAkurat, persentaseDiagnosa);
+
+                        if(hasilDiagnosaPalingAkurat.empty() && hasilKemungkinanDiagnosa.empty())
+                            ImGui::InsertNotification({ ImGuiToastType_Warning, 3000, "Tidak ada penyakit yang cocok dengan kriteria yang diberikan!" });
                     }
                     ImGui::SameLine();
                     if (ImGui::Button(ICON_FA_BOOK " Buku penyakit", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
                     {
                         ImGui::OpenPopup("Buku Penyakit");
                     }
-                    
-                }
-                if (ImGui::BeginPopupModal("Buku Penyakit"))
-                {
-                    
-                    static int selectedPenyakitID = -1;
 
-                    ImGui::BeginChild("##LIST_PENYAKIT", ImVec2(ImGui::GetContentRegionAvail().x * 0.5f, ImGui::GetFrameHeightWithSpacing() * -1), true);
+                }
+                {
+                    ImGui::SetNextWindowSize(ImVec2(800.0f, 500.0f), ImGuiCond_::ImGuiCond_Once);
+                    ImVec2 center(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f);
+                    ImVec2 window_size = ImVec2(800.0f, 500.0f);
+                    ImGui::SetNextWindowPos(ImVec2(center.x - window_size.x * 0.5f, center.y - window_size.y * 0.5f), ImGuiCond_Once);
+                    if (ImGui::BeginPopupModal("Buku Penyakit"))
                     {
 
-                        ImGui::Text(ICON_FA_LIST " Daftar Penyakit");
-                        ImGui::BeginChild("##LIST_PENYAKIT_INNER", ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetFrameHeightWithSpacing() * -1), true);
-                        
+                        static int selectedPenyakitID = -1;
+
+                        ImGui::BeginChild("##LIST_PENYAKIT", ImVec2(ImGui::GetContentRegionAvail().x * 0.5f, ImGui::GetFrameHeightWithSpacing() * -1), true);
                         {
-                            for (const auto& [penyakitID, gejalaList] : g_pakarSystem->GetGejalaPenyakit())
+
+                            ImGui::Text(ICON_FA_LIST " Daftar Penyakit");
+                            ImGui::BeginChild("##LIST_PENYAKIT_INNER", ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetFrameHeightWithSpacing() * -1), true);
+
                             {
-                                const std::string nama = g_pakarSystem->GetNamaPenyakit()[penyakitID];
-                                if (!m_FilterBuku.PassFilter(nama.c_str()))
-                                    continue;
-                                ImGui::PushID(nama.c_str());
-                                if (ImGui::Selectable(nama.c_str(), selectedPenyakitID == penyakitID))
+                                for (const auto& [penyakitID, gejalaList] : g_pakarSystem->GetGejalaPenyakit())
                                 {
-                                    selectedPenyakitID = penyakitID;
+                                    const std::string nama = g_pakarSystem->GetNamaPenyakit()[penyakitID];
+                                    if (!m_FilterBuku.PassFilter(nama.c_str()))
+                                        continue;
+                                    ImGui::PushID(nama.c_str());
+                                    if (ImGui::Selectable(nama.c_str(), selectedPenyakitID == penyakitID))
+                                    {
+                                        selectedPenyakitID = penyakitID;
+                                    }
+                                    ImGui::PopID();
                                 }
-                                ImGui::PopID();
                             }
+                            ImGui::EndChild();
+                            m_FilterBuku.DrawWithHint("##Filter_Buku", "Filter Penyakit", ImGui::GetContentRegionAvail().x);
                         }
                         ImGui::EndChild();
-                        m_FilterBuku.DrawWithHint("##Filter_Buku", "Filter Penyakit", ImGui::GetContentRegionAvail().x);
-                    }
-                    ImGui::EndChild();
-                    ImGui::SameLine();
+                        ImGui::SameLine();
 
-                    ImGui::BeginChild("##DETAIL_GEJALA", ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetFrameHeightWithSpacing() * -1), true);
-                    {
-                        if (selectedPenyakitID >= 0) {
-
-                            const std::string nama = g_pakarSystem->GetNamaPenyakit()[selectedPenyakitID];
-                            ImGui::TextWrapped(ICON_FA_BUG" Gejala dari %s", nama.c_str());
-                        }
-                        ImGui::BeginChild("##LIST_PENYAKIT_INNER", ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y), true);
+                        ImGui::BeginChild("##DETAIL_GEJALA", ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetFrameHeightWithSpacing() * -1), true);
                         {
-                            if (selectedPenyakitID >= 0)
-                            {
-                                
+                            if (selectedPenyakitID >= 0) {
 
-                                const auto gejalaList = g_pakarSystem->GetGejalaPenyakit().at(selectedPenyakitID);
-                                for (uint8_t gid : gejalaList)
+                                const std::string nama = g_pakarSystem->GetNamaPenyakit()[selectedPenyakitID];
+                                ImGui::TextWrapped(ICON_FA_BUG" Gejala dari %s", nama.c_str());
+                            }
+                            ImGui::BeginChild("##LIST_PENYAKIT_INNER", ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y), true);
+                            {
+                                if (selectedPenyakitID >= 0)
                                 {
-                                    if (gid < g_pakarSystem->GetNamaGejala().size())
+
+
+                                    const auto gejalaList = g_pakarSystem->GetGejalaPenyakit().at(selectedPenyakitID);
+                                    for (uint8_t gid : gejalaList)
                                     {
-                                        const std::string gejala = g_pakarSystem->GetNamaGejala()[gid];
-                                        ImGui::BulletText("%s", gejala.c_str());
+                                        if (gid < g_pakarSystem->GetNamaGejala().size())
+                                        {
+                                            const std::string gejala = g_pakarSystem->GetNamaGejala()[gid];
+                                            ImGui::BulletText("%s", gejala.c_str());
+                                        }
                                     }
                                 }
+                                else
+                                {
+                                    ImGui::TextWrapped("Pilih salah satu penyakit untuk melihat gejalanya.");
+                                }
                             }
-                            else
-                            {
-                                ImGui::TextWrapped("Pilih salah satu penyakit untuk melihat gejalanya.");
-                            }
+                            ImGui::EndChild();
+
                         }
                         ImGui::EndChild();
-                        
+                        if (ImGui::Button("Tutup Buku", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+                            ImGui::CloseCurrentPopup();
+                        }
+                        ImGui::EndPopup();
                     }
-                    ImGui::EndChild();
-                    if (ImGui::Button("Tutup Buku", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
-                        ImGui::CloseCurrentPopup();
-                    }
-                    ImGui::EndPopup();
                 }
+                
                 ImGui::End();
                 
             }

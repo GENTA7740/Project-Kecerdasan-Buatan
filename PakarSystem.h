@@ -19,5 +19,6 @@ class PakarSystem {
 		[[nodiscard]] std::vector<uint8_t> MinusOne(std::vector<uint8_t> input_vector) const;
 		void Diagnosa(const std::vector<uint8_t>& inputGejala,
 			std::vector<uint8_t>& kemungkinan,
-			std::vector<uint8_t>& akurat) const;
+			std::vector<uint8_t>& akurat,
+			std::vector<std::pair<uint8_t, size_t>>& persentaseDiagnosa) const;
 };

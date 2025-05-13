@@ -9,6 +9,7 @@
 #include <memory>
 #include <ImWrap.h>
 #include <ctime>
+#include <ImNotify.h>
 
 ID3D11Device*                g_pd3dDevice = nullptr;
 ID3D11DeviceContext*         g_pd3dDeviceContext = nullptr;
@@ -74,6 +75,7 @@ void Drawing::InitDrawing()
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+    io.IniFilename = nullptr;
 
     ImGui::StyleColorsDark();
     ImGui_ImplWin32_Init(g_windowHandle);
@@ -220,6 +222,13 @@ void Drawing::RenderHook()
     ImGui::DynamicVectorGeometryLines();
     this->DrawTopRightCorner();
     this->OnSettingWindow();
+
+    auto& io = ImGui::GetIO();
+    ImGui::SetNextWindowSize(ImVec2(1000.0f, 600.0f), ImGuiCond_::ImGuiCond_Once);
+    ImVec2 center(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f);
+    ImVec2 window_size = ImVec2(1000.0f, 600.0f);
+    ImGui::SetNextWindowPos(ImVec2(center.x - window_size.x * 0.5f, center.y - window_size.y * 0.5f), ImGuiCond_Once);
+    ImGui::RenderNotifications();
 }
 void Drawing::OnSettingWindow()
 {

@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <algorithm>
 #include <unordered_set>
+#include <ImNotify.h>
 PakarSystem::PakarSystem()
 {
 	this->InitNamaGejala();
@@ -145,12 +146,11 @@ std::vector<uint8_t> PakarSystem::MinusOne(std::vector<uint8_t> input_vector) co
 	return result;
 }
 
-void PakarSystem::Diagnosa(const std::vector<uint8_t>& inputGejala, std::vector<uint8_t>& kemungkinan, std::vector<uint8_t>& akurat) const
+void PakarSystem::Diagnosa(const std::vector<uint8_t>& inputGejala, std::vector<uint8_t>& kemungkinan, std::vector<uint8_t>& akurat, std::vector<std::pair<uint8_t, size_t>>& persentaseDiagnosa) const
 {
 	kemungkinan.clear();
 	akurat.clear();
-
-	static std::vector<std::pair<uint8_t, size_t>> hasilSkorDiagnosa;
+	persentaseDiagnosa.clear();
 
 	std::unordered_set<uint8_t> inputSet(inputGejala.begin(), inputGejala.end());
 	size_t maxCocok = 0;
@@ -164,7 +164,7 @@ void PakarSystem::Diagnosa(const std::vector<uint8_t>& inputGejala, std::vector<
 		if (cocok)
 		{
 			kemungkinan.push_back(id);
-			hasilSkorDiagnosa.emplace_back(id, cocok);
+			persentaseDiagnosa.emplace_back(id, static_cast<size_t>((float)cocok / gejala.size() * 100.0f));
 			maxCocok = std::max(maxCocok, cocok);
 		}
 
