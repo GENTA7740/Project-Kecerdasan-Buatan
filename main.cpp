@@ -19,7 +19,12 @@
 
 std::unique_ptr<Drawing>            g_drawing;
 std::unique_ptr<PakarSystem>        g_pakarSystem;
-
+std::vector<bool> g_SelectedGejala;
+std::vector<uint8_t> g_KemungkinanDiagnosa;
+std::vector<uint8_t> g_HasilDiagnosaPalingAkurat;
+std::vector<std::pair<uint8_t, size_t>> g_PersentaseKemungkinanDiagnosa;
+ImGuiTextFilter g_FilterPakar, g_FilterBuku;
+bool g_IsShowBukuPenyakit{ false };
 // Main code
 
 int WINAPI WinMain(
@@ -44,14 +49,10 @@ int WINAPI WinMain(
         {
             g_drawing->RenderHook();
             {
-                static std::vector<bool> selectedGejala(g_pakarSystem->GetNamaGejala().size(), false);
-                static std::vector<uint8_t> hasilKemungkinanDiagnosa;
-                static std::vector<uint8_t> hasilDiagnosaPalingAkurat;
-                static std::vector<std::pair<uint8_t, size_t>> persentaseDiagnosa;
-                static ImGuiTextFilter m_FilterPakar, m_FilterBuku;
-                static bool isShowBukuPenyakit{ false };
+                
                 ImGuiIO& io = ImGui::GetIO();
-
+                g_SelectedGejala.resize(g_pakarSystem->GetNamaGejala().size());
+                
                
                 ImGui::Begin("Pakar System", nullptr, ImGuiWindowFlags_::ImGuiWindowFlags_NoCollapse);
                 {
@@ -70,9 +71,9 @@ int WINAPI WinMain(
 
                                 ImGui::TableHeadersRow();
 
-                                for (size_t i = 0; i < selectedGejala.size(); ++i)
+                                for (size_t i = 0; i < g_SelectedGejala.size(); ++i)
                                 {
-                                    if (!m_FilterPakar.PassFilter(g_pakarSystem->GetNamaGejala()[i].c_str()))
+                                    if (!g_FilterPakar.PassFilter(g_pakarSystem->GetNamaGejala()[i].c_str()))
                                         continue;
 
                                     ImGui::TableNextRow();
@@ -82,11 +83,11 @@ int WINAPI WinMain(
                                     ImGui::TextUnformatted(g_pakarSystem->GetNamaGejala()[i].c_str());
 
                                     ImGui::TableSetColumnIndex(2);
-                                    bool selected = selectedGejala[i];
+                                    bool selected = g_SelectedGejala[i];
                                     ImGui::PushID(static_cast<int>(i));
                                     if (ImGui::Checkbox("##checkbox", &selected))
                                     {
-                                        selectedGejala[i] = selected;
+                                        g_SelectedGejala[i] = selected;
                                     }
                                     ImGui::PopID();
                                 }
@@ -97,7 +98,7 @@ int WINAPI WinMain(
                         }
                         ImGui::EndChild();
                         ImGui::Separator();
-                        m_FilterPakar.DrawWithHint("##FilterGejala", "Filter Gejala", ImGui::GetContentRegionAvail().x);
+                        g_FilterPakar.DrawWithHint("##FilterGejala", "Filter Gejala", ImGui::GetContentRegionAvail().x);
 
                     }
                     ImGui::EndChild();
@@ -107,7 +108,7 @@ int WINAPI WinMain(
                         ImGui::Text(ICON_FA_AMBULANCE " Kemungkinan Penyakit:");
                         ImGui::BeginChild("##INNER_CHILD_03", ImVec2(0, ImGui::GetContentRegionAvail().y * 0.5f), true);
                         {
-                            if (!persentaseDiagnosa.empty())
+                            if (!g_PersentaseKemungkinanDiagnosa.empty())
                             {
                                 if (ImGui::BeginTable("##TableDiagnosa", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
                                 {
@@ -115,7 +116,7 @@ int WINAPI WinMain(
                                     ImGui::TableSetupColumn("Persentase");
                                     ImGui::TableHeadersRow();
 
-                                    for (const auto& [id, persen] : persentaseDiagnosa)
+                                    for (const auto& [id, persen] : g_PersentaseKemungkinanDiagnosa)
                                     {
                                         ImGui::TableNextRow();
 
@@ -140,9 +141,9 @@ int WINAPI WinMain(
                         ImGui::BeginChild("##INNER_CHILD_04", ImVec2(0, 0), true);
                         {
 
-                            if (!hasilDiagnosaPalingAkurat.empty())
+                            if (!g_HasilDiagnosaPalingAkurat.empty())
                             {
-                                for (uint8_t id : hasilDiagnosaPalingAkurat)
+                                for (uint8_t id : g_HasilDiagnosaPalingAkurat)
                                     ImGui::BulletText("%s", g_pakarSystem->GetNamaPenyakit()[id].c_str());
                             }
                             else
@@ -157,12 +158,12 @@ int WINAPI WinMain(
                     if (ImGui::Button(ICON_FA_SEARCH " Diagnosa", ImVec2(ImGui::GetContentRegionAvail().x / 2.0f, 0)))
                     {
                         std::vector<uint8_t> inputGejala;
-                        inputGejala.reserve(selectedGejala.size());
-                        for (size_t i = 0; i < selectedGejala.size(); ++i)
-                            if (selectedGejala[i]) inputGejala.push_back(static_cast<uint8_t>(i));
-                        g_pakarSystem->Diagnosa(inputGejala, hasilKemungkinanDiagnosa, hasilDiagnosaPalingAkurat, persentaseDiagnosa);
+                        inputGejala.reserve(g_SelectedGejala.size());
+                        for (size_t i = 0; i < g_SelectedGejala.size(); ++i)
+                            if (g_SelectedGejala[i]) inputGejala.push_back(static_cast<uint8_t>(i));
+                        g_pakarSystem->Diagnosa(inputGejala, g_KemungkinanDiagnosa, g_HasilDiagnosaPalingAkurat, g_PersentaseKemungkinanDiagnosa);
 
-                        if(hasilDiagnosaPalingAkurat.empty() && hasilKemungkinanDiagnosa.empty())
+                        if(g_HasilDiagnosaPalingAkurat.empty() && g_KemungkinanDiagnosa.empty())
                             ImGui::InsertNotification({ ImGuiToastType_Warning, 3000, "Tidak ada penyakit yang cocok dengan kriteria yang diberikan!" });
                     }
                     ImGui::SameLine();
@@ -192,7 +193,7 @@ int WINAPI WinMain(
                                 for (const auto& [penyakitID, gejalaList] : g_pakarSystem->GetGejalaPenyakit())
                                 {
                                     const std::string nama = g_pakarSystem->GetNamaPenyakit()[penyakitID];
-                                    if (!m_FilterBuku.PassFilter(nama.c_str()))
+                                    if (!g_FilterBuku.PassFilter(nama.c_str()))
                                         continue;
                                     ImGui::PushID(nama.c_str());
                                     if (ImGui::Selectable(nama.c_str(), selectedPenyakitID == penyakitID))
@@ -203,7 +204,7 @@ int WINAPI WinMain(
                                 }
                             }
                             ImGui::EndChild();
-                            m_FilterBuku.DrawWithHint("##Filter_Buku", "Filter Penyakit", ImGui::GetContentRegionAvail().x);
+                            g_FilterBuku.DrawWithHint("##Filter_Buku", "Filter Penyakit", ImGui::GetContentRegionAvail().x);
                         }
                         ImGui::EndChild();
                         ImGui::SameLine();
